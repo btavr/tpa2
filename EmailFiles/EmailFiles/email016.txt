@@ -1,0 +1,30 @@
+De: manuela.afonso@techteam.pt
+Para: antonio.silva@techteam.pt, rodrigo.santiago@techteam.pt
+Assunto: Integração do toolkit Spread para comunicação multicast
+Data: 2025-11-08
+
+António e Rodrigo,
+
+Estive a investigar soluções para melhorar a comunicação entre os nossos serviços distribuídos.
+
+Encontrei o toolkit Spread que oferece comunicação multicast fiável e pode ser uma alternativa ao RabbitMQ para certos casos de uso.
+
+Características do Spread:
+- Comunicação multicast de alto desempenho
+- Garantias de ordenação de mensagens
+- Tolerância a falhas
+- APIs para múltiplas linguagens incluindo Java
+- Melhor performance que message brokers tradicionais para broadcast
+
+Casos de uso no nosso projeto:
+- Sincronização de cache entre múltiplas VMs na GCP
+- Notificações de eventos para todos os nós do cluster
+- Replicação de estado em tempo real
+
+António, consegues avaliar se o Spread é compatível com os nossos containers Docker?
+Rodrigo, podes fazer um benchmark comparativo com gRPC streaming?
+
+Penso que vale a pena explorar esta tecnologia para complementar a nossa arquitetura.
+
+Cumprimentos,
+Manuela

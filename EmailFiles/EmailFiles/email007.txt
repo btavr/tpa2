@@ -1,0 +1,29 @@
+De: luis.martins@tecsoft.pt
+Para: equipa-backend@tecsoft.pt
+Assunto: Atualização da documentação da API REST
+Data: 2025-11-06
+
+Equipa,
+
+Precisamos atualizar urgentemente a documentação da nossa API REST. Clientes externos estão a reportar discrepâncias.
+
+Tarefas:
+- Atualizar Swagger/OpenAPI spec para versão 3.0
+- Documentar novos endpoints criados nas últimas 3 sprints
+- Adicionar exemplos de request/response para todos os endpoints
+- Documentar códigos de erro e suas causas
+- Criar guia de autenticação atualizado
+
+Endpoints sem documentação:
+- POST /api/v2/orders
+- GET /api/v2/analytics/dashboard
+- PUT /api/v2/users/{id}/preferences
+- DELETE /api/v2/sessions/{id}
+
+Também precisamos de melhorar os exemplos de código em diferentes linguagens (Java, Python, JavaScript).
+
+Quem pode ajudar? Sugiro dividirmos por módulos.
+
+Cumprimentos,
+Luís Martins
+API Product Manager

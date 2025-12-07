@@ -1,0 +1,6 @@
+sudo mount -t glusterfs tpa2-node1:/glustervol /var/sharedfiles
+
+
+10.132.0.20 tpa2-node1
+10.132.0.18 tpa2-node2
+10.132.0.19 tpa2-node3

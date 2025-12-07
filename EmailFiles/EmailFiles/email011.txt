@@ -1,0 +1,27 @@
+De: manuela.afonso@techteam.pt
+Para: antonio.silva@techteam.pt, rodrigo.santiago@techteam.pt
+Assunto: Migração de REST para gRPC
+Data: 2025-10-15
+
+Olá António e Rodrigo,
+
+Andei a analisar a possibilidade de migrarmos alguns dos nossos serviços de REST para gRPC.
+
+Vantagens identificadas:
+- Performance superior devido ao uso de Protocol Buffers
+- Comunicação bidirecional com streaming
+- Melhor tipagem com definição de contratos em .proto
+- Geração automática de código cliente em Java
+- Menor latência em comunicações entre microserviços
+
+Proposta:
+Começar pela API de notificações que tem muito tráfego e depois expandir para outros serviços.
+
+António, podes investigar se o gRPC é compatível com as nossas VMs na plataforma GCP?
+Rodrigo, consegues preparar um protótipo simples em Java?
+
+Reunião na quinta-feira para discutirmos o plano de implementação.
+
+Cumprimentos,
+Manuela Afonso
+Tech Lead

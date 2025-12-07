@@ -1,0 +1,27 @@
+De: carlos.mendes@tecsoft.pt
+Para: equipa-scrum@tecsoft.pt
+Assunto: Sprint Planning - Sprint 23
+Data: 2025-11-08
+
+Bom dia equipa,
+
+Amanhã teremos a sessão de Sprint Planning para a Sprint 23.
+
+Agenda:
+1. Review do backlog atualizado pelo Product Owner
+2. Estimativas das user stories prioritárias
+3. Definição do objetivo da sprint
+4. Compromisso da equipa com as tarefas
+
+User Stories principais:
+- Implementar autenticação OAuth2
+- Refatorar módulo de relatórios
+- Integração com API externa de notificações
+- Melhorias de performance na dashboard
+
+A reunião será às 10h e deve durar cerca de 2 horas.
+Por favor, revisem o backlog antes da reunião.
+
+Obrigado,
+Carlos Mendes
+Scrum Master

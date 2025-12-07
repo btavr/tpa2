@@ -1,0 +1,38 @@
+De: antonio.silva@techteam.pt
+Para: manuela.afonso@techteam.pt, rodrigo.santiago@techteam.pt
+Assunto: Docker-compose atualizado com todos os serviços
+Data: 2025-11-18
+
+Manuela e Rodrigo,
+
+Atualizei o ficheiro docker-compose.yml com toda a nossa stack de serviços.
+
+Serviços configurados:
+- app-java: Aplicação Java 17 com gRPC
+- rabbitmq: Message broker com management console
+- postgres: Base de dados
+- redis: Cache distribuído
+- nginx: Reverse proxy e load balancer
+- prometheus: Monitorização
+- grafana: Dashboards
+
+Funcionalidades:
+- Networking entre containers
+- Volumes persistentes para dados
+- Health checks automáticos
+- Restart automático em caso de falha
+- Variables de ambiente por ficheiro .env
+
+Para iniciar tudo:
+```
+docker-compose up -d
+```
+
+Rodrigo, podes testar se o serviço gRPC comunica bem com o RabbitMQ através dos containers?
+
+Manuela, valida se as configurações estão alinhadas com o deployment nas VMs da plataforma GCP.
+
+O objetivo é termos o mesmo ambiente em dev, staging e produção.
+
+Cumprimentos,
+António

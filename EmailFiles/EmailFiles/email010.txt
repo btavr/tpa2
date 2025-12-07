@@ -1,0 +1,34 @@
+De: patricia.santos@tecsoft.pt
+Para: equipa-backend@tecsoft.pt, dba@tecsoft.pt
+Assunto: Migração de MySQL para PostgreSQL
+Data: 2025-11-03
+
+Olá equipa,
+
+Foi aprovada a migração da base de dados de MySQL para PostgreSQL. Este é um projeto crítico que vai durar cerca de 2 meses.
+
+Razões da migração:
+- Melhor suporte para JSON e dados não estruturados
+- Performance superior em queries complexas
+- Funcionalidades avançadas (window functions, CTEs)
+- Melhor conformidade com standards SQL
+- Licenciamento mais favorável
+
+Plano de migração:
+Semana 1-2: Análise de schema e dependências
+Semana 3-4: Conversão de schema e stored procedures
+Semana 5-6: Migração de dados e testes
+Semana 7-8: Testes de performance e validação
+Semana 9: Deploy em staging
+Semana 10: Deploy em produção
+
+Desafios conhecidos:
+- Diferenças de sintaxe SQL
+- Conversão de stored procedures
+- Migração de 50GB de dados
+- Downtime mínimo requerido
+
+Primeira reunião na segunda-feira para alinhar estratégia.
+
+Patrícia Santos
+Database Administrator

@@ -1,0 +1,21 @@
+De: pedro.silva@tecsoft.pt
+Para: equipa-dev@tecsoft.pt
+Assunto: Reunião sobre arquitetura de microserviços
+Data: 2025-11-10
+
+Olá equipa,
+
+Venho propor uma reunião para discutirmos a arquitetura do novo projeto de microserviços.
+Precisamos definir os padrões de comunicação entre serviços e escolher as tecnologias adequadas.
+
+Tópicos a discutir:
+- API Gateway vs Service Mesh
+- Base de dados por serviço ou partilhada
+- Estratégia de deployment com Docker e Kubernetes
+- Monitorização e logging distribuído
+
+A reunião está marcada para sexta-feira às 14h na sala de conferências.
+
+Cumprimentos,
+Pedro Silva
+Arquiteto de Software
