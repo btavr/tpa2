@@ -1,0 +1,7 @@
+userapp/messages/Request.class
+userapp/messages/Request$RequestType.class
+userapp/UserApp.class
+userapp/messages/Response.class
+userapp/util/MessageSerializer.class
+userapp/UserApp$1.class
+userapp/messages/Response$ResponseType.class

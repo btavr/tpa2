@@ -1,0 +1,32 @@
+De: teresa.lopes@tecsoft.pt
+Para: equipa-qa@tecsoft.pt, equipa-dev@tecsoft.pt
+Assunto: Plano de implementação de testes automatizados
+Data: 2025-11-05
+
+Bom dia,
+
+Vamos iniciar a implementação de uma suite completa de testes automatizados para melhorar a qualidade do código.
+
+Objetivos:
+- Aumentar cobertura de testes de 45% para 80%
+- Implementar testes end-to-end com Selenium
+- Configurar CI/CD para executar testes automaticamente
+- Reduzir tempo de regressão manual
+
+Ferramentas a utilizar:
+- JUnit 5 para testes unitários
+- Mockito para mocks
+- Selenium WebDriver para testes E2E
+- JMeter para testes de performance
+- SonarQube para análise de código
+
+Fases do projeto:
+Fase 1 (2 semanas): Testes unitários críticos
+Fase 2 (2 semanas): Testes de integração
+Fase 3 (3 semanas): Testes E2E
+Fase 4 (1 semana): Integração com pipeline CI/CD
+
+Todos os developers devem escrever testes para novo código. PRs sem testes não serão aprovados.
+
+Teresa Lopes
+QA Lead

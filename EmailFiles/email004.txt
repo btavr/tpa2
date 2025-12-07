@@ -1,0 +1,26 @@
+De: rita.fernandes@tecsoft.pt
+Para: joao.santos@tecsoft.pt
+CC: equipa-dev@tecsoft.pt
+Assunto: Code Review - Pull Request #456
+Data: 2025-11-09
+
+Olá João,
+
+Fiz review do teu PR #456 sobre a implementação do sistema de cache.
+
+Pontos positivos:
+- Boa cobertura de testes unitários
+- Código bem documentado
+- Implementação eficiente da estratégia LRU
+
+Comentários e sugestões:
+- Linha 145: considera usar Optional em vez de null check
+- A classe CacheManager está a ficar muito grande, talvez valha a pena split
+- Faltam testes de integração para o cenário de cache distribuída
+- Atualiza o README com exemplos de uso
+
+No geral, está muito bom! Assim que fizeres as alterações sugeridas, aprovo o merge.
+
+Cumprimentos,
+Rita Fernandes
+Senior Developer

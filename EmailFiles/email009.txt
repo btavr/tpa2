@@ -1,0 +1,32 @@
+De: bruno.ferreira@tecsoft.pt
+Para: equipa-backend@tecsoft.pt
+Assunto: Análise de performance e otimizações necessárias
+Data: 2025-11-04
+
+Equipa,
+
+Os testes de performance revelaram alguns gargalos que precisam ser resolvidos antes do próximo release.
+
+Problemas identificados:
+- Endpoint /api/reports tem tempo de resposta de 8 segundos (inaceitável)
+- Queries N+1 no módulo de utilizadores
+- Falta de índices em tabelas críticas
+- Cache não está a ser utilizado eficientemente
+- Connection pool esgota sob carga
+
+Métricas atuais vs objetivos:
+- Tempo de resposta médio: 2.5s -> objetivo: 500ms
+- Throughput: 100 req/s -> objetivo: 500 req/s
+- Taxa de erro sob carga: 5% -> objetivo: <0.1%
+
+Ações prioritárias:
+1. Implementar eager loading nas queries problemáticas
+2. Adicionar índices na base de dados
+3. Configurar Redis para cache distribuída
+4. Aumentar connection pool de 10 para 50
+5. Implementar pagination em listagens grandes
+
+Vamos fazer uma sessão de pair programming para resolver os casos mais críticos.
+
+Bruno Ferreira
+Performance Engineer

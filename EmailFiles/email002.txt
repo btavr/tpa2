@@ -1,0 +1,21 @@
+De: ana.costa@tecsoft.pt
+Para: dev-backend@tecsoft.pt
+Assunto: URGENTE - Bug crítico no módulo de pagamentos
+Data: 2025-11-11
+
+Equipa,
+
+Foi reportado um bug crítico no ambiente de produção. Os utilizadores não conseguem completar pagamentos.
+
+Detalhes do problema:
+- Erro 500 ao processar transações
+- Logs mostram timeout na conexão com gateway de pagamento
+- Afeta aproximadamente 30% das tentativas de pagamento
+- Iniciou hoje às 09:45
+
+Precisamos resolver isto URGENTE. João, podes investigar os logs? Maria, verifica a configuração do gateway.
+
+Vamos fazer uma call em 15 minutos para coordenar a correção.
+
+Ana Costa
+Tech Lead
