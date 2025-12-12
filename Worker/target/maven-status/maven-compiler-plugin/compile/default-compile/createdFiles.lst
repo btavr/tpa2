@@ -1,8 +1,8 @@
-worker/Worker$1.class
-worker/messages/Response$ResponseType.class
-worker/Worker.class
-worker/util/MessageSerializer.class
-worker/messages/Response.class
-worker/messages/Request.class
-worker/messages/Request$RequestType.class
-worker/util/FileSearcher.class
+worker\messages\Response$ResponseType.class
+worker\Worker.class
+worker\Worker$1.class
+worker\util\FileSearcher.class
+worker\messages\Request.class
+worker\util\MessageSerializer.class
+worker\messages\Response.class
+worker\messages\Request$RequestType.class

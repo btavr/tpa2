@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class UserApp {
 
-    private static String IP_BROKER = "localhost";
+    private static String IP_BROKER = "34.79.208.0";
     private static int PORT_BROKER = 5672;
     private static String REQUEST_EXCHANGE = "request-exchange";
     private static String WORK_QUEUE = "work-queue";
@@ -50,7 +50,7 @@ public class UserApp {
             channel = connection.createChannel();
 
             // Declarar exchange para pedidos (DIRECT)
-            channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.DIRECT, true);
+            channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.FANOUT, true);
 
             // Criar queue exclusiva para respostas (auto-delete quando conexão fechar)
             responseQueue = channel.queueDeclare().getQueue();
