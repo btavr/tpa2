@@ -135,38 +135,14 @@ Ver [TESTES.md](TESTES.md) para guia completo.
 2. Worker: `java -jar Worker.jar localhost 5672 work-queue /tmp/test-emails`
 3. UserApp: `java -jar UserApp.jar`
 
-### Teste com Múltiplos Workers
-
-Use o script `start-workers.sh`:
-
-```bash
-./start-workers.sh [num_workers] [directory]
-# Exemplo: ./start-workers.sh 3 /tmp/test-emails
-```
-
-Para parar: `./stop-workers.sh`
-
 ### Teste em VMs (GCP)
 
-**UserApp no PC local, Workers nas VMs:**
+**Ver [DEPLOY-VMS.md](DEPLOY-VMS.md) para guia completo de deploy nas VMs.**
 
-1. **VM-1**: RabbitMQ (Docker)
-   ```bash
-   docker run -d --hostname rabbithost --name rabbitmg \
-     -p 5672:5672 -p 15672:15672 rabbitmq:management
-   ```
-
-2. **VM-2, VM-3**: Workers
-   ```bash
-   java -jar Worker.jar <IP_INTERNO_VM1> 5672 work-queue /var/sharedfiles
-   ```
-
-3. **PC Local**: UserApp
-   ```bash
-   java -jar UserApp.jar <IP_PUBLICO_VM1> 5672 request-exchange work-queue
-   ```
-
-**Firewall GCP:** Criar regras para portos 5672 e 15672.
+**Resumo rápido:**
+- **Workers**: Usam IP interno da VM-1 (ex: `10.128.0.8`)
+- **UserApp**: Usa IP público da VM-1 (ex: `34.123.45.67`)
+- **Firewall GCP**: Criar regras para portos 5672 e 15672
 
 ## 📊 Verificação
 
@@ -250,6 +226,7 @@ Para completar o TPA2, falta:
 ## 📚 Documentação Adicional
 
 - [TESTES.md](TESTES.md) - Guia completo de testes
+- [DEPLOY-VMS.md](DEPLOY-VMS.md) - Deploy nas VMs da cloud (onde substituir IPs)
 - [ESTATISTICAS.md](ESTATISTICAS.md) - Status da implementação de estatísticas
 - [COMPILACAO.md](COMPILACAO.md) - Como compilar no IntelliJ
 
