@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Worker que processa pedidos de pesquisa, obtenção de ficheiros e estatísticas
- * 
+ * <p>
  * Uso: java -jar worker.jar <ipRabbitMQ> <portRabbitMQ> <workQueue> <directoryPath>
  * Exemplo: java -jar worker.jar 10.128.0.8 5672 work-queue /var/sharedfiles
  */
@@ -21,7 +21,7 @@ public class Worker {
     private static int PORT_BROKER = 5672;
     private static String WORK_QUEUE = "work-queue";
     private static String DIRECTORY_PATH = "/var/sharedfiles";
-    
+
     // Estatísticas locais do worker
     private static int totalRequests = 0;
     private static int successfulRequests = 0;
@@ -49,17 +49,6 @@ public class Worker {
             Connection connection = factory.newConnection();
             Channel channel = connection.createChannel();
 
-            // Declarar exchange para pedidos (caso não exista)
-            String REQUEST_EXCHANGE = "request-exchange";
-            channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.DIRECT, true);
-
-            // Declarar queue de trabalho (durable para sobreviver a reinícios)
-            channel.queueDeclare(WORK_QUEUE, true, false, false, null);
-            
-            // Bind queue ao exchange (routing key = nome da queue)
-            channel.queueBind(WORK_QUEUE, REQUEST_EXCHANGE, WORK_QUEUE);
-            System.out.println("Queue bound to exchange: " + REQUEST_EXCHANGE + " -> " + WORK_QUEUE);
-            
             // Configurar QoS: apenas 1 mensagem por vez (fair dispatch)
             channel.basicQos(1);
 
@@ -177,13 +166,15 @@ public class Worker {
      */
     private static Response processSearchRequest(Request request) throws IOException {
         List<String> filenames = FileSearcher.getMatchingFilenames(DIRECTORY_PATH, request.getSubstrings());
-        
+
+        System.out.println("Filenames: " + filenames);
+
         Response response = new Response();
         response.setType(Response.ResponseType.SEARCH_RESULT);
         response.setRequestId(request.getRequestId());
         response.setFilenames(filenames);
         response.setSuccess(true);
-        
+
         return response;
     }
 
@@ -192,14 +183,14 @@ public class Worker {
      */
     private static Response processGetFileRequest(Request request) throws IOException {
         String content = FileSearcher.getFileContent(DIRECTORY_PATH, request.getFilename());
-        
+
         Response response = new Response();
         response.setType(Response.ResponseType.FILE_CONTENT);
         response.setRequestId(request.getRequestId());
         response.setFilename(request.getFilename());
         response.setContent(content);
         response.setSuccess(true);
-        
+
         return response;
     }
 
@@ -212,13 +203,13 @@ public class Worker {
         Response response = new Response();
         response.setType(Response.ResponseType.STATISTICS);
         response.setRequestId(request.getRequestId());
-        
+
         synchronized (statsLock) {
             response.setTotalRequests(totalRequests);
             response.setSuccessfulRequests(successfulRequests);
             response.setFailedRequests(failedRequests);
         }
-        
+
         response.setSuccess(true);
         return response;
     }
@@ -226,10 +217,14 @@ public class Worker {
     /**
      * Envia resposta para o exchange/queue especificado no request
      */
-    private static void sendResponse(Channel channel, Request request, Response response) 
+    private static void sendResponse(Channel channel, Request request, Response response)
             throws IOException {
         byte[] responseBytes = MessageSerializer.toBytes(response);
-        
+
+        System.out.println("filenames: " + response.getFilenames());
+        System.out.println("request - replyToExchange: " + request.getReplyExchange());
+        System.out.println("request - replyTo: " + request.getReplyTo());
+
         // Publicar resposta no exchange especificado, com routing key = replyTo (nome da queue)
         channel.basicPublish(
             request.getReplyExchange(),
@@ -237,7 +232,7 @@ public class Worker {
             null,
             responseBytes
         );
-        
+
         System.out.println("Response sent for request: " + request.getRequestId());
     }
 }

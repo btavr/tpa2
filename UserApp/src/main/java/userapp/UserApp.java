@@ -50,7 +50,7 @@ public class UserApp {
             channel = connection.createChannel();
 
             // Declarar exchange para pedidos (DIRECT)
-            channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.DIRECT, true);
+            // channel.exchangeDeclare("", BuiltinExchangeType.DIRECT, true);
 
             // Criar queue exclusiva para respostas (auto-delete quando conexão fechar)
             responseQueue = channel.queueDeclare().getQueue();
@@ -58,7 +58,7 @@ public class UserApp {
 
             // Bind response queue ao exchange de respostas (usaremos o mesmo exchange)
             // O routing key será o nome da queue
-            channel.queueBind(responseQueue, REQUEST_EXCHANGE, responseQueue);
+            //channel.queueBind(responseQueue, "", responseQueue);
 
             // Configurar consumer para receber respostas
             setupResponseConsumer();
@@ -159,7 +159,7 @@ public class UserApp {
             Request.RequestType.SEARCH,
             requestId,
             responseQueue,  // replyTo = nome da queue de respostas
-            REQUEST_EXCHANGE,  // replyExchange = exchange onde publicar resposta
+            "",  // replyExchange = exchange onde publicar resposta
             substrings
         );
 

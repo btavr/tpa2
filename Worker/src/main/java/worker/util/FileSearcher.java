@@ -32,6 +32,7 @@ public class FileSearcher {
                     try {
                         String emailMessage = Files.readString(path);
                         if (containsAllSubstrings(emailMessage, substringsList)) {
+                            System.out.println("caminho: "+ path.getFileName().toString());
                             matchingEmails.put(path.getFileName().toString(), emailMessage);
                         }
                     } catch (IOException e) {
