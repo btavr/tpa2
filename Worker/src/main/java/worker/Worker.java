@@ -1,13 +1,18 @@
 package worker;
 
 import com.rabbitmq.client.*;
-import worker.messages.Request;
-import worker.messages.Response;
+import spread.SpreadException;
+import worker.messages.RequestStatistics;
+import worker.messages.RequestUserApp;
+import worker.messages.ResponseUserApp;
+import worker.spread.GroupMember;
 import worker.util.FileSearcher;
-import worker.util.MessageSerializer;
+import worker.util.MessageStatisticsSerializer;
+import worker.util.MessageUserAppSerializer;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Worker que processa pedidos de pesquisa, obtenção de ficheiros e estatísticas
@@ -21,6 +26,10 @@ public class Worker {
     private static int PORT_BROKER = 5672;
     private static String WORK_QUEUE = "work-queue";
     private static String DIRECTORY_PATH = "/var/sharedfiles";
+    private static String DAEMON_IP = "localhost";
+    private static int DAEMON_PORT = 5672;
+    private static String SPREAD_GROUP = "group";
+    private static String WORKER_STRING = "Worker-";
 
     // Estatísticas locais do worker
     private static int totalRequests = 0;
@@ -35,6 +44,9 @@ public class Worker {
             if (args.length >= 2) PORT_BROKER = Integer.parseInt(args[1]);
             if (args.length >= 3) WORK_QUEUE = args[2];
             if (args.length >= 4) DIRECTORY_PATH = args[3];
+            if (args.length >= 5) DAEMON_IP = args[4];
+            if (args.length >= 6) DAEMON_PORT = Integer.parseInt(args[5]);
+            if (args.length >= 7) SPREAD_GROUP = args[6];
 
             System.out.println("Worker starting...");
             System.out.println("RabbitMQ: " + IP_BROKER + ":" + PORT_BROKER);
@@ -52,6 +64,12 @@ public class Worker {
             // Configurar QoS: apenas 1 mensagem por vez (fair dispatch)
             channel.basicQos(1);
 
+            final String userName = WORKER_STRING.concat(String.valueOf(UUID.randomUUID()));
+            final GroupMember member = new GroupMember(userName, DAEMON_IP, DAEMON_PORT);
+
+            member.addMemberToGroup(SPREAD_GROUP);
+
+
             System.out.println("Waiting for messages. To exit press CTRL+C");
 
             // Callback para processar mensagens
@@ -59,15 +77,15 @@ public class Worker {
                 try {
                     // Deserializar request
                     byte[] body = delivery.getBody();
-                    Request request = MessageSerializer.requestFromBytes(body);
+                    RequestUserApp requestUserApp = MessageUserAppSerializer.requestFromBytes(body);
 
-                    System.out.println("Received request: " + request.getType() + " (ID: " + request.getRequestId() + ")");
+                    System.out.println("Received request: " + requestUserApp.getType() + " (ID: " + requestUserApp.getRequestId() + ")");
 
                     // Processar request
-                    Response response = processRequest(request);
+                    ResponseUserApp responseUserApp = processRequest(requestUserApp, member);
 
                     // Enviar resposta
-                    sendResponse(channel, request, response);
+                    sendResponse(channel, requestUserApp, responseUserApp);
 
                     // Acknowledgment
                     channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
@@ -110,33 +128,33 @@ public class Worker {
     /**
      * Processa um request e retorna a resposta correspondente
      */
-    private static Response processRequest(Request request) {
+    private static ResponseUserApp processRequest(final RequestUserApp requestUserApp, final GroupMember member) {
         synchronized (statsLock) {
             totalRequests++;
         }
 
         try {
-            Response response;
+            ResponseUserApp responseUserApp;
 
-            switch (request.getType()) {
+            switch (requestUserApp.getType()) {
                 case SEARCH:
-                    response = processSearchRequest(request);
+                    responseUserApp = processSearchRequest(requestUserApp);
                     break;
                 case GET_FILE:
-                    response = processGetFileRequest(request);
+                    responseUserApp = processGetFileRequest(requestUserApp);
                     break;
                 case GET_STATISTICS:
-                    response = processGetStatisticsRequest(request);
+                    responseUserApp = processGetStatisticsRequest(requestUserApp, member);
                     break;
                 default:
-                    response = new Response();
-                    response.setType(Response.ResponseType.SEARCH_RESULT);
-                    response.setRequestId(request.getRequestId());
-                    response.setSuccess(false);
-                    response.setErrorMessage("Unknown request type");
+                    responseUserApp = new ResponseUserApp();
+                    responseUserApp.setType(ResponseUserApp.ResponseType.UNKNOWN);
+                    responseUserApp.setRequestId(requestUserApp.getRequestId());
+                    responseUserApp.setSuccess(false);
+                    responseUserApp.setErrorMessage("Unknown request type");
             }
 
-            if (response.isSuccess()) {
+            if (responseUserApp.isSuccess()) {
                 synchronized (statsLock) {
                     successfulRequests++;
                 }
@@ -146,52 +164,52 @@ public class Worker {
                 }
             }
 
-            return response;
+            return responseUserApp;
 
         } catch (Exception e) {
             synchronized (statsLock) {
                 failedRequests++;
             }
-            Response errorResponse = new Response();
-            errorResponse.setType(Response.ResponseType.SEARCH_RESULT);
-            errorResponse.setRequestId(request.getRequestId());
-            errorResponse.setSuccess(false);
-            errorResponse.setErrorMessage("Error processing request: " + e.getMessage());
-            return errorResponse;
+            ResponseUserApp errorResponseUserApp = new ResponseUserApp();
+            errorResponseUserApp.setType(ResponseUserApp.ResponseType.ERROR);
+            errorResponseUserApp.setRequestId(requestUserApp.getRequestId());
+            errorResponseUserApp.setSuccess(false);
+            errorResponseUserApp.setErrorMessage("Error processing request: " + e.getMessage());
+            return errorResponseUserApp;
         }
     }
 
     /**
      * Processa pedido de pesquisa de substrings
      */
-    private static Response processSearchRequest(Request request) throws IOException {
-        List<String> filenames = FileSearcher.getMatchingFilenames(DIRECTORY_PATH, request.getSubstrings());
+    private static ResponseUserApp processSearchRequest(RequestUserApp requestUserApp) throws IOException {
+        List<String> filenames = FileSearcher.getMatchingFilenames(DIRECTORY_PATH, requestUserApp.getSubstrings());
 
         System.out.println("Filenames: " + filenames);
 
-        Response response = new Response();
-        response.setType(Response.ResponseType.SEARCH_RESULT);
-        response.setRequestId(request.getRequestId());
-        response.setFilenames(filenames);
-        response.setSuccess(true);
+        ResponseUserApp responseUserApp = new ResponseUserApp();
+        responseUserApp.setType(ResponseUserApp.ResponseType.SEARCH_RESULT);
+        responseUserApp.setRequestId(requestUserApp.getRequestId());
+        responseUserApp.setFilenames(filenames);
+        responseUserApp.setSuccess(true);
 
-        return response;
+        return responseUserApp;
     }
 
     /**
      * Processa pedido de obtenção de conteúdo de ficheiro
      */
-    private static Response processGetFileRequest(Request request) throws IOException {
-        String content = FileSearcher.getFileContent(DIRECTORY_PATH, request.getFilename());
+    private static ResponseUserApp processGetFileRequest(RequestUserApp requestUserApp) throws IOException {
+        String content = FileSearcher.getFileContent(DIRECTORY_PATH, requestUserApp.getFilename());
 
-        Response response = new Response();
-        response.setType(Response.ResponseType.FILE_CONTENT);
-        response.setRequestId(request.getRequestId());
-        response.setFilename(request.getFilename());
-        response.setContent(content);
-        response.setSuccess(true);
+        ResponseUserApp responseUserApp = new ResponseUserApp();
+        responseUserApp.setType(ResponseUserApp.ResponseType.FILE_CONTENT);
+        responseUserApp.setRequestId(requestUserApp.getRequestId());
+        responseUserApp.setFilename(requestUserApp.getFilename());
+        responseUserApp.setContent(content);
+        responseUserApp.setSuccess(true);
 
-        return response;
+        return responseUserApp;
     }
 
     /**
@@ -199,28 +217,31 @@ public class Worker {
      * Nota: Esta é uma versão simplificada. No sistema completo, o worker coordenador
      * agregaria estatísticas de todos os workers via Spread.
      */
-    private static Response processGetStatisticsRequest(Request request) {
-        Response response = new Response();
-        response.setType(Response.ResponseType.STATISTICS);
-        response.setRequestId(request.getRequestId());
-
+    private static ResponseUserApp processGetStatisticsRequest(RequestUserApp requestUserApp, final GroupMember member) throws SpreadException {
+        final RequestStatistics requestStatistics = new RequestStatistics();
+        requestStatistics.setType(RequestStatistics.RequestType.NOT_LEADER);
+        requestStatistics.setRequestId(requestUserApp.getRequestId());
+        requestStatistics.setReplyExchange(requestUserApp.getReplyExchange());
+        requestStatistics.setReplyTo(requestUserApp.getReplyTo());
         synchronized (statsLock) {
-            response.setTotalRequests(totalRequests);
-            response.setSuccessfulRequests(successfulRequests);
-            response.setFailedRequests(failedRequests);
+            requestStatistics.setTotalRequests(totalRequests);
+            requestStatistics.setSuccessfulRequests(successfulRequests);
+            requestStatistics.setFailedRequests(failedRequests);
         }
 
-        response.setSuccess(true);
-        return response;
+        member.sendMulticastMessage(MessageStatisticsSerializer.toBytes(requestStatistics));
+        return null;
     }
 
     /**
      * Envia resposta para o default exchange (DIRECT)
      * O default exchange roteia diretamente para a queue cujo nome corresponde à routing key
      */
-    private static void sendResponse(Channel channel, Request request, Response response)
+    private static void sendResponse(Channel channel, RequestUserApp requestUserApp, ResponseUserApp responseUserApp)
             throws IOException {
-        byte[] responseBytes = MessageSerializer.toBytes(response);
+        if (responseUserApp == null) {
+            System.out.println("There isn't any message to be send.");
+        }
 
         System.out.println("filenames: " + response.getFilenames());
         System.out.println("request - replyToExchange: " + request.getReplyExchange() + " (default exchange)");
@@ -235,7 +256,7 @@ public class Worker {
             responseBytes
         );
 
-        System.out.println("Response sent for request: " + request.getRequestId());
+        System.out.println("Response sent for request: " + requestUserApp.getRequestId());
     }
 }
 

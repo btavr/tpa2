@@ -6,7 +6,7 @@ import java.util.List;
  * Classe que representa um pedido recebido pelo Worker do UserApp
  * (mesma estrutura que em UserApp para compatibilidade)
  */
-public class Request {
+public class RequestUserApp {
     public enum RequestType {
         SEARCH,      // Pesquisa de substrings
         GET_FILE,    // Obter conteúdo de ficheiro
@@ -24,7 +24,7 @@ public class Request {
     // Para GET_FILE
     private String filename;
 
-    public Request() {}
+    public RequestUserApp() {}
 
     // Getters e Setters
     public RequestType getType() {

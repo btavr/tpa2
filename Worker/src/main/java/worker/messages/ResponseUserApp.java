@@ -6,11 +6,13 @@ import java.util.List;
  * Classe que representa uma resposta enviada pelo Worker
  * (mesma estrutura que em UserApp para compatibilidade)
  */
-public class Response {
+public class ResponseUserApp {
     public enum ResponseType {
         SEARCH_RESULT,
         FILE_CONTENT,
-        STATISTICS
+        STATISTICS,
+        UNKNOWN,
+        ERROR
     }
 
     private ResponseType type;
@@ -27,7 +29,7 @@ public class Response {
     private boolean success;
     private String errorMessage;
 
-    public Response() {}
+    public ResponseUserApp() {}
 
     // Getters e Setters
     public ResponseType getType() {
