@@ -1,14 +1,18 @@
 package worker.messages;
 
 /**
- * Classe que representa um pedido para comunicação entre workers em pedidos de estatísticas
+ * Classe que representa um pedido para comunicação entre workers em pedidos de
+ * estatísticas
  *
  */
 public class RequestStatistics {
 
     public enum RequestType {
         NOT_LEADER,
-        LEADER,
+        WORKER_RESPONSE,
+        ELECTION,
+        ELECTION_OK,
+        COORDINATOR,
     }
 
     private RequestType type;
@@ -78,4 +82,3 @@ public class RequestStatistics {
         this.failedRequests = failedRequests;
     }
 }
-

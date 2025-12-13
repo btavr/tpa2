@@ -21,7 +21,7 @@ public class GroupMember {
         try {
             this.connection = new SpreadConnection();
             connection.connect(InetAddress.getByName(daemonIP), port, memberName, false, true);
-            advancedMsgHandling = new AdvancedMessageHandling(connection);
+            advancedMsgHandling = new AdvancedMessageHandling(connection, this);
             connection.add(advancedMsgHandling);
         } catch (SpreadException e) {
             System.err.println("There was an error connecting to the daemon.");
@@ -39,6 +39,16 @@ public class GroupMember {
         groupsBelonging.put(groupName, newGroup);
     }
 
+    private boolean isLeader = false;
+
+    public void setLeader(boolean leader) {
+        isLeader = leader;
+    }
+
+    public boolean isLeader() {
+        return isLeader;
+    }
+
     public void sendMulticastMessage(final byte[] txtMessage) throws SpreadException {
         final SpreadMessage multicastMessage = new SpreadMessage();
         groupsBelonging.forEach((s, spreadGroup) -> multicastMessage.addGroup(s));
@@ -49,4 +59,12 @@ public class GroupMember {
         System.out.println("Message sent to all the groups");
     }
 
+    public void sendUnicastMessage(String targetMember, byte[] data) throws SpreadException {
+        SpreadMessage unicastMessage = new SpreadMessage();
+        unicastMessage.setSafe();
+        unicastMessage.addGroup(targetMember);
+        unicastMessage.setData(data);
+        connection.multicast(unicastMessage);
+        System.out.println("Unicast message sent to " + targetMember);
+    }
 }

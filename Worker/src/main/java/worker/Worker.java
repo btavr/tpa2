@@ -17,7 +17,8 @@ import java.util.UUID;
 /**
  * Worker que processa pedidos de pesquisa, obtenção de ficheiros e estatísticas
  * <p>
- * Uso: java -jar worker.jar <ipRabbitMQ> <portRabbitMQ> <workQueue> <directoryPath>
+ * Uso: java -jar worker.jar <ipRabbitMQ> <portRabbitMQ> <workQueue>
+ * <directoryPath>
  * Exemplo: java -jar worker.jar 10.128.0.8 5672 work-queue /var/sharedfiles
  */
 public class Worker {
@@ -36,6 +37,8 @@ public class Worker {
     private static int successfulRequests = 0;
     private static int failedRequests = 0;
     private static final Object statsLock = new Object();
+    private static Channel channel;
+    private static GroupMember member;
 
     public static void main(String[] args) {
         try {
@@ -59,16 +62,16 @@ public class Worker {
             factory.setPort(PORT_BROKER);
 
             Connection connection = factory.newConnection();
-            Channel channel = connection.createChannel();
+            channel = connection.createChannel();
 
             // Configurar QoS: apenas 1 mensagem por vez (fair dispatch)
             channel.basicQos(1);
 
-            final String userName = WORKER_STRING.concat(String.valueOf(UUID.randomUUID()));
-            final GroupMember member = new GroupMember(userName, DAEMON_IP, DAEMON_PORT);
+            final long pid = ProcessHandle.current().pid();
+            final String userName = WORKER_STRING.concat(pid + "-" + UUID.randomUUID());
+            member = new GroupMember(userName, DAEMON_IP, DAEMON_PORT);
 
             member.addMemberToGroup(SPREAD_GROUP);
-
 
             System.out.println("Waiting for messages. To exit press CTRL+C");
 
@@ -79,13 +82,14 @@ public class Worker {
                     byte[] body = delivery.getBody();
                     RequestUserApp requestUserApp = MessageUserAppSerializer.requestFromBytes(body);
 
-                    System.out.println("Received request: " + requestUserApp.getType() + " (ID: " + requestUserApp.getRequestId() + ")");
+                    System.out.println("Received request: " + requestUserApp.getType() + " (ID: "
+                            + requestUserApp.getRequestId() + ")");
 
                     // Processar request
-                    ResponseUserApp responseUserApp = processRequest(requestUserApp, member);
+                    ResponseUserApp responseUserApp = processRequest(requestUserApp);
 
                     // Enviar resposta
-                    sendResponse(channel, requestUserApp, responseUserApp);
+                    sendResponse(channel, requestUserApp, responseUserApp, member);
 
                     // Acknowledgment
                     channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
@@ -128,7 +132,7 @@ public class Worker {
     /**
      * Processa um request e retorna a resposta correspondente
      */
-    private static ResponseUserApp processRequest(final RequestUserApp requestUserApp, final GroupMember member) {
+    private static ResponseUserApp processRequest(final RequestUserApp requestUserApp) {
         synchronized (statsLock) {
             totalRequests++;
         }
@@ -144,7 +148,7 @@ public class Worker {
                     responseUserApp = processGetFileRequest(requestUserApp);
                     break;
                 case GET_STATISTICS:
-                    responseUserApp = processGetStatisticsRequest(requestUserApp, member);
+                    responseUserApp = processGetStatisticsRequest();
                     break;
                 default:
                     responseUserApp = new ResponseUserApp();
@@ -217,46 +221,102 @@ public class Worker {
      * Nota: Esta é uma versão simplificada. No sistema completo, o worker coordenador
      * agregaria estatísticas de todos os workers via Spread.
      */
-    private static ResponseUserApp processGetStatisticsRequest(RequestUserApp requestUserApp, final GroupMember member) throws SpreadException {
-        final RequestStatistics requestStatistics = new RequestStatistics();
-        requestStatistics.setType(RequestStatistics.RequestType.NOT_LEADER);
-        requestStatistics.setRequestId(requestUserApp.getRequestId());
-        requestStatistics.setReplyExchange(requestUserApp.getReplyExchange());
-        requestStatistics.setReplyTo(requestUserApp.getReplyTo());
-        synchronized (statsLock) {
-            requestStatistics.setTotalRequests(totalRequests);
-            requestStatistics.setSuccessfulRequests(successfulRequests);
-            requestStatistics.setFailedRequests(failedRequests);
-        }
-
-        member.sendMulticastMessage(MessageStatisticsSerializer.toBytes(requestStatistics));
-        return null;
+    private static ResponseUserApp processGetStatisticsRequest() {
+        final ResponseUserApp responseUserApp = new ResponseUserApp();
+        responseUserApp.setSuccess(true);
+        return responseUserApp;
     }
 
     /**
      * Envia resposta para o default exchange (DIRECT)
-     * O default exchange roteia diretamente para a queue cujo nome corresponde à routing key
+     * O default exchange roteia diretamente para a queue cujo nome corresponde à
+     * routing key
      */
-    private static void sendResponse(Channel channel, RequestUserApp requestUserApp, ResponseUserApp responseUserApp)
-            throws IOException {
-        if (responseUserApp == null) {
-            System.out.println("There isn't any message to be send.");
+    private static void sendResponse(final Channel channel, final RequestUserApp request, final ResponseUserApp response, final GroupMember member)
+            throws IOException, SpreadException {
+        System.out.println("Total pedidos processados: " + getTotalRequests() +
+                " Número de pedidos com sucesso: " + getSuccessfulRequests() +
+                " Número de pedidos com erro: " + getFailedRequests());
+
+        if (response.getContent() == null && response.getFilenames() == null) {
+            System.out.println("No content from other requests, send a multicast for the Get Statistics operation.");
+
+            final RequestStatistics requestStatistics = new RequestStatistics();
+            requestStatistics.setType(RequestStatistics.RequestType.NOT_LEADER);
+            requestStatistics.setRequestId(request.getRequestId());
+            requestStatistics.setReplyExchange(request.getReplyExchange());
+            requestStatistics.setReplyTo(request.getReplyTo());
+            synchronized (statsLock) {
+                requestStatistics.setTotalRequests(totalRequests);
+                requestStatistics.setSuccessfulRequests(successfulRequests);
+                requestStatistics.setFailedRequests(failedRequests);
+            }
+            member.sendMulticastMessage(MessageStatisticsSerializer.toBytes(requestStatistics));
+
+            return;
         }
 
-        System.out.println("filenames: " + response.getFilenames());
+        final byte[] responseBytes = MessageUserAppSerializer.toBytes(response);
+
+        System.out.println("response: " + response.getRequestId());
         System.out.println("request - replyToExchange: " + request.getReplyExchange() + " (default exchange)");
         System.out.println("request - replyTo: " + request.getReplyTo());
 
-        // Publicar resposta no default exchange (DIRECT) com routing key = nome da queue
-        // O default exchange ("" vazio) roteia diretamente para a queue com o nome igual à routing key
         channel.basicPublish(
-            request.getReplyExchange(),  // "" = default exchange (DIRECT)
-            request.getReplyTo(),         // routing key = nome da queue de respostas
-            null,
-            responseBytes
-        );
+                request.getReplyExchange(),
+                request.getReplyTo(),
+                null,
+                responseBytes);
 
-        System.out.println("Response sent for request: " + requestUserApp.getRequestId());
+        System.out.println("Total pedidos processados: " + getTotalRequests() +
+                " Número de pedidos com sucesso: " + getSuccessfulRequests() +
+                " Número de pedidos com erro: " + getFailedRequests());
+
+        System.out.println("Response sent for request: " + response.getRequestId());
+    }
+
+    public static void sendLeaderResponse(final ResponseUserApp responseUserApp, final String replyTo,
+                                          final String replyExchange) throws IOException {
+        if (responseUserApp == null) {
+            System.out.println("There isn't any message to be send.");
+            return;
+        }
+
+        byte[] responseBytes = MessageUserAppSerializer.toBytes(responseUserApp);
+
+        System.out.println("response: " + responseUserApp.getRequestId());
+        System.out.println("request - replyToExchange: " + replyExchange + " (default exchange)");
+        System.out.println("request - replyTo: " + replyTo);
+
+        // Access the static channel
+        channel.basicPublish(
+                replyExchange,
+                replyTo,
+                null,
+                responseBytes);
+
+        System.out.println("Total pedidos processados: " + getTotalRequests() +
+                " Número de pedidos com sucesso: " + getSuccessfulRequests() +
+                " Número de pedidos com erro: " + getFailedRequests());
+
+        System.out.println("Response sent for request: " + responseUserApp.getRequestId());
+    }
+
+    public static int getTotalRequests() {
+        synchronized (statsLock) {
+            return totalRequests;
+        }
+    }
+
+    public static int getSuccessfulRequests() {
+        synchronized (statsLock) {
+            return successfulRequests;
+        }
+    }
+
+    public static int getFailedRequests() {
+        synchronized (statsLock) {
+            return failedRequests;
+        }
     }
 }
-
