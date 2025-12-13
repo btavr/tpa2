@@ -9,9 +9,9 @@ import com.rabbitmq.client.ConnectionFactory;
  * Configurador do RabbitMQ para o TPA2
  * 
  * Cria:
- * - Exchange "request-exchange" (DIRECT, durable)
+ * - Exchange "request-exchange" (FANOUT, durable)
  * - Queue "work-queue" (durable)
- * - Binding entre exchange e queue
+ * - Binding entre exchange e queue (routing key vazia para FANOUT)
  * 
  * Uso: java -jar configurator.jar <ipRabbitMQ> <portRabbitMQ>
  */
@@ -39,17 +39,17 @@ public class TPA2Configurator {
             Connection connection = factory.newConnection();
             Channel channel = connection.createChannel();
 
-            // Criar exchange DIRECT para pedidos (durable)
-            channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.DIRECT, true);
-            System.out.println("Exchange created: " + REQUEST_EXCHANGE);
+            // Criar exchange FANOUT para pedidos (durable)
+            channel.exchangeDeclare(REQUEST_EXCHANGE, BuiltinExchangeType.FANOUT, true);
+            System.out.println("Exchange created: " + REQUEST_EXCHANGE + " (FANOUT)");
 
             // Criar queue de trabalho (durable)
             channel.queueDeclare(WORK_QUEUE, true, false, false, null);
             System.out.println("Queue created: " + WORK_QUEUE);
 
-            // Bind queue ao exchange com routing key = nome da queue
-            channel.queueBind(WORK_QUEUE, REQUEST_EXCHANGE, WORK_QUEUE);
-            System.out.println("Binding created: " + REQUEST_EXCHANGE + " -> " + WORK_QUEUE + " (routing key: " + WORK_QUEUE + ")");
+            // Bind queue ao exchange FANOUT (routing key vazia para FANOUT)
+            channel.queueBind(WORK_QUEUE, REQUEST_EXCHANGE, "");
+            System.out.println("Binding created: " + REQUEST_EXCHANGE + " (FANOUT) -> " + WORK_QUEUE);
 
             channel.close();
             connection.close();

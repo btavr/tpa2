@@ -49,16 +49,12 @@ public class UserApp {
             connection = factory.newConnection();
             channel = connection.createChannel();
 
-            // Declarar exchange para pedidos (DIRECT)
-            // channel.exchangeDeclare("", BuiltinExchangeType.DIRECT, true);
 
             // Criar queue exclusiva para respostas (auto-delete quando conexão fechar)
             responseQueue = channel.queueDeclare().getQueue();
             System.out.println("Response queue created: " + responseQueue);
-
-            // Bind response queue ao exchange de respostas (usaremos o mesmo exchange)
-            // O routing key será o nome da queue
-            //channel.queueBind(responseQueue, "", responseQueue);
+            // Nota: Não é necessário fazer bind - respostas vão para o default exchange (DIRECT)
+            // usando o nome da queue como routing key
 
             // Configurar consumer para receber respostas
             setupResponseConsumer();
@@ -159,7 +155,7 @@ public class UserApp {
             Request.RequestType.SEARCH,
             requestId,
             responseQueue,  // replyTo = nome da queue de respostas
-            "",  // replyExchange = exchange onde publicar resposta
+            "",  // replyExchange = default exchange (DIRECT)
             substrings
         );
 
@@ -184,7 +180,7 @@ public class UserApp {
             Request.RequestType.GET_FILE,
             requestId,
             responseQueue,
-            REQUEST_EXCHANGE,
+            "",  // replyExchange = default exchange (DIRECT)
             filename
         );
 
@@ -201,7 +197,7 @@ public class UserApp {
             Request.RequestType.GET_STATISTICS,
             requestId,
             responseQueue,
-            REQUEST_EXCHANGE
+            ""  // replyExchange = default exchange (DIRECT)
         );
 
         sendRequest(request);
@@ -209,15 +205,15 @@ public class UserApp {
     }
 
     /**
-     * Envia request para a work queue
+     * Envia request para o exchange FANOUT
      */
     private static void sendRequest(Request request) throws IOException {
         byte[] requestBytes = MessageSerializer.toBytes(request);
         
-        // Publicar no exchange com routing key = nome da work queue
+        // Publicar no exchange FANOUT (routing key vazia para FANOUT)
         channel.basicPublish(
             REQUEST_EXCHANGE,
-            WORK_QUEUE,  // routing key = nome da queue
+            "",  // routing key vazia para FANOUT exchange
             null,
             requestBytes
         );

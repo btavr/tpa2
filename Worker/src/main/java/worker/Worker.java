@@ -215,20 +215,22 @@ public class Worker {
     }
 
     /**
-     * Envia resposta para o exchange/queue especificado no request
+     * Envia resposta para o default exchange (DIRECT)
+     * O default exchange roteia diretamente para a queue cujo nome corresponde à routing key
      */
     private static void sendResponse(Channel channel, Request request, Response response)
             throws IOException {
         byte[] responseBytes = MessageSerializer.toBytes(response);
 
         System.out.println("filenames: " + response.getFilenames());
-        System.out.println("request - replyToExchange: " + request.getReplyExchange());
+        System.out.println("request - replyToExchange: " + request.getReplyExchange() + " (default exchange)");
         System.out.println("request - replyTo: " + request.getReplyTo());
 
-        // Publicar resposta no exchange especificado, com routing key = replyTo (nome da queue)
+        // Publicar resposta no default exchange (DIRECT) com routing key = nome da queue
+        // O default exchange ("" vazio) roteia diretamente para a queue com o nome igual à routing key
         channel.basicPublish(
-            request.getReplyExchange(),
-            request.getReplyTo(),
+            request.getReplyExchange(),  // "" = default exchange (DIRECT)
+            request.getReplyTo(),         // routing key = nome da queue de respostas
             null,
             responseBytes
         );
