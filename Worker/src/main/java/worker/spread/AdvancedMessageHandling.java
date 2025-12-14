@@ -2,9 +2,9 @@ package worker.spread;
 
 import spread.*;
 import worker.Worker;
-import worker.messages.RequestStatistics;
 import worker.messages.ResponseUserApp;
-import worker.util.MessageStatisticsSerializer;
+import worker.messages.SpreadMessages;
+import worker.util.MessageSpreadSerializer;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -13,14 +13,12 @@ import java.util.Map;
 import java.util.Set;
 
 public class AdvancedMessageHandling implements AdvancedMessageListener {
-    // Map to store aggregations: RequestId -> Statistics Data
     private final Map<String, AggregatedStatistics> aggregations = new HashMap<>();
     private final SpreadConnection connection;
 
     private MembershipInfo currentMembership;
     private final GroupMember groupMember;
 
-    // Helper class to hold aggregation state
     private static class AggregatedStatistics {
         int totalRequests = 0;
         int successfulRequests = 0;
@@ -36,7 +34,7 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
     @Override
     public void regularMessageReceived(final SpreadMessage spreadMessage) {
         try {
-            final RequestStatistics request = MessageStatisticsSerializer
+            final SpreadMessages request = MessageSpreadSerializer
                     .requestStatisticsFromBytes(spreadMessage.getData());
 
             if (currentMembership == null || request == null)
@@ -71,24 +69,23 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
         }
     }
 
-    private void handleElectionMessage(String sender, RequestStatistics request) {
+    private void handleElectionMessage(String sender, SpreadMessages request) {
         long senderPid = extractPid(sender);
         long myPid = extractPid(connection.getPrivateGroup().toString());
 
         if (myPid > senderPid) {
-            // I am bigger, send OK and start my own election if not active
             sendElectionOk(sender, request);
             startElection();
         }
     }
 
-    private void sendElectionOk(String target, RequestStatistics req) {
-        RequestStatistics okMsg = new RequestStatistics();
-        okMsg.setType(RequestStatistics.RequestType.ELECTION_OK);
-        okMsg.setRequestId(req.getRequestId()); // Keep context if needed
+    private void sendElectionOk(String target, SpreadMessages req) {
+        SpreadMessages okMsg = new SpreadMessages();
+        okMsg.setType(SpreadMessages.RequestType.ELECTION_OK);
+        okMsg.setRequestId(req.getRequestId());
 
         try {
-            groupMember.sendUnicastMessage(target, MessageStatisticsSerializer.toBytes(okMsg));
+            groupMember.sendUnicastMessage(target, MessageSpreadSerializer.toBytes(okMsg));
         } catch (SpreadException e) {
             e.printStackTrace();
         }
@@ -98,7 +95,7 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
         if (currentMembership == null)
             return;
 
-        System.out.println("Starting Election...");
+        System.out.println("Starting Election!");
         SpreadGroup[] members = currentMembership.getMembers();
         long myPid = extractPid(connection.getPrivateGroup().toString());
         boolean isBiggest = true;
@@ -117,12 +114,12 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
     }
 
     private void sendElectionAndWait(String target) {
-        RequestStatistics electMsg = new RequestStatistics();
-        electMsg.setType(RequestStatistics.RequestType.ELECTION);
+        SpreadMessages electMsg = new SpreadMessages();
+        electMsg.setType(SpreadMessages.RequestType.ELECTION);
         electMsg.setRequestId("ELECTION-" + System.currentTimeMillis());
 
         try {
-            groupMember.sendUnicastMessage(target, MessageStatisticsSerializer.toBytes(electMsg));
+            groupMember.sendUnicastMessage(target, MessageSpreadSerializer.toBytes(electMsg));
         } catch (SpreadException e) {
             e.printStackTrace();
         }
@@ -132,26 +129,19 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
         groupMember.setLeader(true);
         System.out.println("I am declaring myself Leader.");
 
-        RequestStatistics coordMsg = new RequestStatistics();
-        coordMsg.setType(RequestStatistics.RequestType.COORDINATOR);
-        coordMsg.setRequestId("COORD-" + System.currentTimeMillis());
+        SpreadMessages coordMsg = new SpreadMessages();
+        coordMsg.setType(SpreadMessages.RequestType.COORDINATOR);
+        coordMsg.setRequestId("COORDINATOR-" + System.currentTimeMillis());
 
         try {
-            groupMember.sendMulticastMessage(MessageStatisticsSerializer.toBytes(coordMsg));
+            groupMember.sendMulticastMessage(MessageSpreadSerializer.toBytes(coordMsg));
         } catch (SpreadException e) {
             e.printStackTrace();
         }
     }
 
-    private long extractPid(String memberName) {
+    private long extractPid(final String memberName) {
         try {
-            // Format: #Worker-<PID>-<UUID>#hostname
-            // Split by '-'
-            // Worker name set as: Check Worker.java: WORKER_STRING.concat(pid + "-" + ...);
-            // Example: Worker-12345-uuid
-            // Spread might decorate it: #Worker-12345-uuid#localhost
-
-            // Remove Spread's # if present at start
             String clean = memberName.startsWith("#") ? memberName.substring(1) : memberName;
 
             String[] parts = clean.split("-");
@@ -161,39 +151,31 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
         } catch (Exception e) {
             System.err.println("Failed to parse PID from: " + memberName);
         }
-        return -1; // Fallback
+        return -1;
     }
 
-    private void handleElectionOkMessage(String sender) {
+    private void handleElectionOkMessage(final String sender) {
         System.out.println("Received OK from " + sender + ". Waiting for coordinator.");
-        // We defer to the bigger node.
     }
 
-    private void handleCoordinatorMessage(String sender) {
+    private void handleCoordinatorMessage(final String sender) {
         System.out.println("COORDINATOR is " + sender);
         groupMember.setLeader(false);
-        // If I was the one announcing, I am the leader, but the message comes back to
-        // me too usually.
+
         if (sender.equals(connection.getPrivateGroup().toString())) {
             groupMember.setLeader(true);
             System.out.println("I am the Leader!");
         }
     }
 
-    private void handleWorkerResponse(final RequestStatistics request, final String sender, final int membershipGroupSize) throws IOException {
+    private void handleWorkerResponse(final SpreadMessages request, final String sender, final int membershipGroupSize) throws IOException {
         if (groupMember.isLeader()) {
             handleLeaderLogic(request, sender, membershipGroupSize);
         }
     }
 
-    // Adjusted regularMessageReceived structure implies identifying sender earlier.
-    // Let's refactor slightly to keep access to 'sender' in helper methods or pass
-    // it.
-    private void handleNotLeaderMessage(final RequestStatistics request, final String sender, final int membershipGroupSize)
+    private void handleNotLeaderMessage(final SpreadMessages request, final String sender, final int membershipGroupSize)
             throws SpreadException, IOException {
-        // Initial request from a worker (or external)
-
-        // If I am leader, start aggregation
         if (groupMember.isLeader()) {
             handleLeaderLogic(request, sender, membershipGroupSize);
         } else {
@@ -201,17 +183,17 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
         }
     }
 
-    private void handleLeaderLogic(RequestStatistics request, String sender, int groupSize) throws IOException {
+    private void handleLeaderLogic(SpreadMessages request, String sender, int groupSize) throws IOException {
         final String requestId = request.getRequestId();
         aggregations.putIfAbsent(requestId, new AggregatedStatistics());
         final AggregatedStatistics stats = aggregations.get(requestId);
 
-        // Avoid double counting same sender
+        // Valida para não voltar a processar o nó já processado
         if (stats.responders.contains(sender)) {
             return;
         }
 
-        // Add stats
+        // Stats do pedido
         stats.totalRequests += request.getTotalRequests();
         stats.successfulRequests += request.getSuccessfulRequests();
         stats.failedRequests += request.getFailedRequests();
@@ -221,7 +203,7 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
                 " Número de pedidos com sucesso: " + request.getSuccessfulRequests() +
                 " Número de pedidos com erro: " + request.getFailedRequests());
 
-        // Add own stats
+        // Stats do próprio nó
         String myName = connection.getPrivateGroup().toString();
         if (!stats.responders.contains(myName)) {
             stats.totalRequests += Worker.getTotalRequests();
@@ -229,7 +211,7 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
             stats.failedRequests += Worker.getFailedRequests();
             stats.responders.add(myName);
 
-            System.out.println("Stats do próprio pedido");
+            System.out.println("Stats do próprio nó");
             System.out.println("Total pedidos processados: " + Worker.getTotalRequests() +
                     " Número de pedidos com sucesso: " + Worker.getSuccessfulRequests() +
                     " Número de pedidos com erro: " + Worker.getFailedRequests());
@@ -254,11 +236,10 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
         }
     }
 
-    private void handleWorkerLogic(final RequestStatistics request) throws SpreadException {
-        if (request.getType() == RequestStatistics.RequestType.NOT_LEADER) {
-            // Send my stats
-            final RequestStatistics myStats = new RequestStatistics();
-            myStats.setType(RequestStatistics.RequestType.WORKER_RESPONSE);
+    private void handleWorkerLogic(final SpreadMessages request) throws SpreadException {
+        if (request.getType() == SpreadMessages.RequestType.NOT_LEADER) {
+            final SpreadMessages myStats = new SpreadMessages();
+            myStats.setType(SpreadMessages.RequestType.WORKER_RESPONSE);
             myStats.setRequestId(request.getRequestId());
             myStats.setReplyTo(request.getReplyTo());
             myStats.setReplyExchange(request.getReplyExchange());
@@ -266,7 +247,7 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
             myStats.setSuccessfulRequests(Worker.getSuccessfulRequests());
             myStats.setFailedRequests(Worker.getFailedRequests());
 
-            groupMember.sendMulticastMessage(MessageStatisticsSerializer.toBytes(myStats));
+            groupMember.sendMulticastMessage(MessageSpreadSerializer.toBytes(myStats));
         }
     }
 
@@ -287,7 +268,6 @@ public class AdvancedMessageHandling implements AdvancedMessageListener {
                 }
                 System.out.println();
 
-                // Start Election on Membership Change
                 startElection();
             }
         }

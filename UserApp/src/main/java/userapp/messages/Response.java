@@ -14,24 +14,25 @@ public class Response {
 
     private ResponseType type;
     private String requestId;  // ID do pedido original para correlação
-    
+
     // Para SEARCH_RESULT
     private List<String> filenames;
-    
+
     // Para FILE_CONTENT
     private String filename;
     private String content;
-    
+
     // Para STATISTICS
     private int totalRequests;
     private int successfulRequests;
     private int failedRequests;
-    
+
     private boolean success;
     private String errorMessage;
 
     // Construtor vazio para Gson
-    public Response() {}
+    public Response() {
+    }
 
     // Construtor para SEARCH_RESULT
     public Response(ResponseType type, String requestId, List<String> filenames, boolean success) {

@@ -17,19 +17,20 @@ public class ResponseUserApp {
 
     private ResponseType type;
     private String requestId;
-    
+
     private List<String> filenames;
     private String filename;
     private String content;
-    
+
     private int totalRequests;
     private int successfulRequests;
     private int failedRequests;
-    
+
     private boolean success;
     private String errorMessage;
 
-    public ResponseUserApp() {}
+    public ResponseUserApp() {
+    }
 
     // Getters e Setters
     public ResponseType getType() {

@@ -14,17 +14,18 @@ public class Request {
 
     private RequestType type;
     private String requestId;  // ID único para correlacionar request/response
-    private String replyTo;    // Nome da queue onde enviar a resposta
-    private String replyExchange; // Exchange onde publicar a resposta
-    
+    private String replyTo;    // Nome da queue onde envia a resposta
+    private String replyExchange; // Exchange onde publica a resposta
+
     // Para SEARCH
     private List<String> substrings;
-    
+
     // Para GET_FILE
     private String filename;
-    
+
     // Construtor vazio para Gson
-    public Request() {}
+    public Request() {
+    }
 
     // Construtor para SEARCH
     public Request(RequestType type, String requestId, String replyTo, String replyExchange, List<String> substrings) {

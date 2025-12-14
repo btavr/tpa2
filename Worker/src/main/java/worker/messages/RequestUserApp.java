@@ -17,14 +17,15 @@ public class RequestUserApp {
     private String requestId;
     private String replyTo;
     private String replyExchange;
-    
+
     // Para SEARCH
     private List<String> substrings;
-    
+
     // Para GET_FILE
     private String filename;
 
-    public RequestUserApp() {}
+    public RequestUserApp() {
+    }
 
     // Getters e Setters
     public RequestType getType() {

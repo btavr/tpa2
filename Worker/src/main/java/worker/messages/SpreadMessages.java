@@ -1,11 +1,9 @@
 package worker.messages;
 
 /**
- * Classe que representa um pedido para comunicação entre workers em pedidos de
- * estatísticas
- *
+ * Classe que representa a mensagem de comunicação entre a rede de máquinas ligadas pelo spread.
  */
-public class RequestStatistics {
+public class SpreadMessages {
 
     public enum RequestType {
         NOT_LEADER,
@@ -23,7 +21,7 @@ public class RequestStatistics {
     private int successfulRequests;
     private int failedRequests;
 
-    public RequestStatistics() {
+    public SpreadMessages() {
     }
 
     public RequestType getType() {

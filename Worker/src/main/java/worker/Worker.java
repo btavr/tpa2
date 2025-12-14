@@ -2,12 +2,12 @@ package worker;
 
 import com.rabbitmq.client.*;
 import spread.SpreadException;
-import worker.messages.RequestStatistics;
 import worker.messages.RequestUserApp;
 import worker.messages.ResponseUserApp;
+import worker.messages.SpreadMessages;
 import worker.spread.GroupMember;
 import worker.util.FileSearcher;
-import worker.util.MessageStatisticsSerializer;
+import worker.util.MessageSpreadSerializer;
 import worker.util.MessageUserAppSerializer;
 
 import java.io.IOException;
@@ -17,9 +17,8 @@ import java.util.UUID;
 /**
  * Worker que processa pedidos de pesquisa, obtenção de ficheiros e estatísticas
  * <p>
- * Uso: java -jar worker.jar <ipRabbitMQ> <portRabbitMQ> <workQueue>
- * <directoryPath>
- * Exemplo: java -jar worker.jar 10.128.0.8 5672 work-queue /var/sharedfiles
+ * Uso: java -jar worker.jar <ipRabbitMQ> <portRabbitMQ> <workQueue> <directoryPath> <daemonIp> <daemonPort> <spreadGroup>
+ * Exemplo: java -jar worker.jar 10.128.0.8 5672 work-queue /var/sharedfiles 34.140.217.62 4803 grupoTPA2
  */
 public class Worker {
 
@@ -30,7 +29,8 @@ public class Worker {
     private static String DAEMON_IP = "localhost";
     private static int DAEMON_PORT = 5672;
     private static String SPREAD_GROUP = "group";
-    private static String WORKER_STRING = "Worker-";
+    private static final String WORKER_STRING = "Worker-";
+    private static final int VALUE_ONE = 1;
 
     // Estatísticas locais do worker
     private static int totalRequests = 0;
@@ -65,10 +65,11 @@ public class Worker {
             channel = connection.createChannel();
 
             // Configurar QoS: apenas 1 mensagem por vez (fair dispatch)
-            channel.basicQos(1);
+            channel.basicQos(VALUE_ONE);
 
+            // Atribuir nome ao membro (WORKER-<pid>-<UUID>)
             final long pid = ProcessHandle.current().pid();
-            final String userName = WORKER_STRING.concat(pid + "-" + UUID.randomUUID());
+            final String userName = WORKER_STRING + pid + "-" + UUID.randomUUID();
             member = new GroupMember(userName, DAEMON_IP, DAEMON_PORT);
 
             member.addMemberToGroup(SPREAD_GROUP);
@@ -241,8 +242,8 @@ public class Worker {
         if (response.getContent() == null && response.getFilenames() == null) {
             System.out.println("No content from other requests, send a multicast for the Get Statistics operation.");
 
-            final RequestStatistics requestStatistics = new RequestStatistics();
-            requestStatistics.setType(RequestStatistics.RequestType.NOT_LEADER);
+            final SpreadMessages requestStatistics = new SpreadMessages();
+            requestStatistics.setType(SpreadMessages.RequestType.NOT_LEADER);
             requestStatistics.setRequestId(request.getRequestId());
             requestStatistics.setReplyExchange(request.getReplyExchange());
             requestStatistics.setReplyTo(request.getReplyTo());
@@ -251,7 +252,7 @@ public class Worker {
                 requestStatistics.setSuccessfulRequests(successfulRequests);
                 requestStatistics.setFailedRequests(failedRequests);
             }
-            member.sendMulticastMessage(MessageStatisticsSerializer.toBytes(requestStatistics));
+            member.sendMulticastMessage(MessageSpreadSerializer.toBytes(requestStatistics));
 
             return;
         }

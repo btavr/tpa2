@@ -14,6 +14,7 @@ public class GroupMember {
 
     private SpreadConnection connection;
     private AdvancedMessageHandling advancedMsgHandling;
+    private boolean isLeader = false;
 
     private final Map<String, SpreadGroup> groupsBelonging = new HashMap<>();
 
@@ -39,16 +40,6 @@ public class GroupMember {
         groupsBelonging.put(groupName, newGroup);
     }
 
-    private boolean isLeader = false;
-
-    public void setLeader(boolean leader) {
-        isLeader = leader;
-    }
-
-    public boolean isLeader() {
-        return isLeader;
-    }
-
     public void sendMulticastMessage(final byte[] txtMessage) throws SpreadException {
         final SpreadMessage multicastMessage = new SpreadMessage();
         groupsBelonging.forEach((s, spreadGroup) -> multicastMessage.addGroup(s));
@@ -59,12 +50,20 @@ public class GroupMember {
         System.out.println("Message sent to all the groups");
     }
 
-    public void sendUnicastMessage(String targetMember, byte[] data) throws SpreadException {
+    public void sendUnicastMessage(final String targetMember, final byte[] data) throws SpreadException {
         SpreadMessage unicastMessage = new SpreadMessage();
         unicastMessage.setSafe();
         unicastMessage.addGroup(targetMember);
         unicastMessage.setData(data);
         connection.multicast(unicastMessage);
         System.out.println("Unicast message sent to " + targetMember);
+    }
+
+    public void setLeader(final boolean leader) {
+        isLeader = leader;
+    }
+
+    public boolean isLeader() {
+        return isLeader;
     }
 }

@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Aplicação cliente que envia pedidos para o sistema e recebe respostas
- * 
+ * <p>
  * Uso: java -jar userapp.jar <ipRabbitMQ> <portRabbitMQ> <requestExchange> <workQueue>
  * Exemplo: java -jar userapp.jar 10.128.0.8 5672 request-exchange work-queue
  */
@@ -21,7 +21,9 @@ public class UserApp {
     private static int PORT_BROKER = 5672;
     private static String REQUEST_EXCHANGE = "request-exchange";
     private static String WORK_QUEUE = "work-queue";
-    
+    private static final String DEFAULT_EXCHANGE = "";
+    private static final String EMPTY_ROUTING_KEY = "";
+
     private static Connection connection;
     private static Channel channel;
     private static String responseQueue;
@@ -49,15 +51,32 @@ public class UserApp {
             connection = factory.newConnection();
             channel = connection.createChannel();
 
-
             // Criar queue exclusiva para respostas (auto-delete quando conexão fechar)
             responseQueue = channel.queueDeclare().getQueue();
             System.out.println("Response queue created: " + responseQueue);
-            // Nota: Não é necessário fazer bind - respostas vão para o default exchange (DIRECT)
-            // usando o nome da queue como routing key
 
-            // Configurar consumer para receber respostas
-            setupResponseConsumer();
+            DeliverCallback deliverCallback = (consumerTag, delivery) -> {
+                try {
+                    byte[] body = delivery.getBody();
+                    Response response = MessageSerializer.responseFromBytes(body);
+
+                    synchronized (responseLock) {
+                        pendingResponses.put(response.getRequestId(), response);
+                        responseLock.notifyAll();
+                    }
+
+                } catch (Exception e) {
+                    System.err.println("Error processing response: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            };
+
+            CancelCallback cancelCallback = (consumerTag) -> {
+                System.out.println("Response consumer cancelled: " + consumerTag);
+            };
+
+            channel.basicConsume(responseQueue, true, deliverCallback, cancelCallback);
+            System.out.println("Response consumer started.");
 
             // Menu interativo
             Scanner scanner = new Scanner(System.in);
@@ -85,11 +104,10 @@ public class UserApp {
                 }
             }
 
-            // Cleanup
+            // Terminar e fechar conexões
             channel.close();
             connection.close();
             System.out.println("UserApp closed.");
-
         } catch (Exception e) {
             System.err.println("UserApp error: " + e.getMessage());
             e.printStackTrace();
@@ -113,12 +131,12 @@ public class UserApp {
             try {
                 byte[] body = delivery.getBody();
                 Response response = MessageSerializer.responseFromBytes(body);
-                
+
                 synchronized (responseLock) {
                     pendingResponses.put(response.getRequestId(), response);
                     responseLock.notifyAll();
                 }
-                
+
             } catch (Exception e) {
                 System.err.println("Error processing response: " + e.getMessage());
                 e.printStackTrace();
@@ -152,11 +170,11 @@ public class UserApp {
 
         String requestId = UUID.randomUUID().toString();
         Request request = new Request(
-            Request.RequestType.SEARCH,
-            requestId,
-            responseQueue,  // replyTo = nome da queue de respostas
-            "",  // replyExchange = default exchange (DIRECT)
-            substrings
+                Request.RequestType.SEARCH,
+                requestId,
+                responseQueue,
+                DEFAULT_EXCHANGE,
+                substrings
         );
 
         sendRequest(request);
@@ -177,11 +195,11 @@ public class UserApp {
 
         String requestId = UUID.randomUUID().toString();
         Request request = new Request(
-            Request.RequestType.GET_FILE,
-            requestId,
-            responseQueue,
-            "",  // replyExchange = default exchange (DIRECT)
-            filename
+                Request.RequestType.GET_FILE,
+                requestId,
+                responseQueue,
+                DEFAULT_EXCHANGE,
+                filename
         );
 
         sendRequest(request);
@@ -194,10 +212,10 @@ public class UserApp {
     private static void handleGetStatisticsRequest(Scanner scanner) throws IOException {
         String requestId = UUID.randomUUID().toString();
         Request request = new Request(
-            Request.RequestType.GET_STATISTICS,
-            requestId,
-            responseQueue,
-            ""  // replyExchange = default exchange (DIRECT)
+                Request.RequestType.GET_STATISTICS,
+                requestId,
+                responseQueue,
+                DEFAULT_EXCHANGE
         );
 
         sendRequest(request);
@@ -209,15 +227,15 @@ public class UserApp {
      */
     private static void sendRequest(Request request) throws IOException {
         byte[] requestBytes = MessageSerializer.toBytes(request);
-        
+
         // Publicar no exchange FANOUT (routing key vazia para FANOUT)
         channel.basicPublish(
-            REQUEST_EXCHANGE,
-            "",  // routing key vazia para FANOUT exchange
-            null,
-            requestBytes
+                REQUEST_EXCHANGE,
+                EMPTY_ROUTING_KEY,  // routing key vazia para FANOUT exchange
+                null,
+                requestBytes
         );
-        
+
         System.out.println("Request sent (ID: " + request.getRequestId() + ")");
     }
 
@@ -229,23 +247,23 @@ public class UserApp {
             try {
                 long startTime = System.currentTimeMillis();
                 long timeout = 30000; // 30 segundos
-                
+
                 while (!pendingResponses.containsKey(requestId)) {
                     long elapsed = System.currentTimeMillis() - startTime;
                     if (elapsed > timeout) {
-                        System.out.println("\nTimeout waiting for response.");
+                        System.out.println("Timeout waiting for response.");
                         return;
                     }
                     responseLock.wait(timeout - elapsed);
                 }
-                
+
                 Response response = pendingResponses.remove(requestId);
-                
+
                 // Imprimir resposta agora (na thread principal)
-                System.out.println("\n=== Response Received ===");
+                System.out.println("=== Response Received ===");
                 System.out.println("Request ID: " + response.getRequestId());
                 printResponse(response);
-                
+
             } catch (InterruptedException e) {
                 System.err.println("Interrupted while waiting for response.");
             }

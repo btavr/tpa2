@@ -2,14 +2,14 @@ package worker.util;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import worker.messages.RequestStatistics;
+import worker.messages.SpreadMessages;
 
 import java.nio.charset.StandardCharsets;
 
 /**
  * Utilitário para serialização/deserialização de mensagens usando Gson TODO Alterar javadoc
  */
-public class MessageStatisticsSerializer {
+public class MessageSpreadSerializer {
     private static final Gson gson = new GsonBuilder().create();
 
     public static byte[] toBytes(Object obj) {
@@ -17,8 +17,8 @@ public class MessageStatisticsSerializer {
         return json.getBytes(StandardCharsets.UTF_8);
     }
 
-    public static RequestStatistics requestStatisticsFromBytes(byte[] bytes) {
+    public static SpreadMessages requestStatisticsFromBytes(byte[] bytes) {
         String json = new String(bytes, StandardCharsets.UTF_8);
-        return gson.fromJson(json, RequestStatistics.class);
+        return gson.fromJson(json, SpreadMessages.class);
     }
 }
